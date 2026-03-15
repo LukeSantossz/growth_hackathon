@@ -1,0 +1,558 @@
+{
+  "project": "AI Sales Team",
+  "branchName": "ralph/ai-sales-team-mvp",
+  "description": "Plataforma web onde agentes de IA executam o ciclo completo de pré-vendas — do briefing até a reunião agendada no Google Calendar. Aproveita scraper Google Maps existente.",
+  "existingInfrastructure": {
+    "supabase": "Já configurado com tabela 'places'",
+    "scraper": "GrowthwayHackathonDatabase/scraper.py - Selenium para Google Maps",
+    "leads": "~850KB de dados já coletados em extracted_data.json"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Estender schema do Supabase com novas tabelas",
+      "description": "As a developer, I need additional tables for the sales platform while keeping existing 'places' table.",
+      "acceptanceCriteria": [
+        "Tabela 'entrepreneurs' com: id (uuid), email (text unique), name (text), company (text), briefing_json (jsonb), calendar_token (text), created_at (timestamp)",
+        "Tabela 'leads' com: id, entrepreneur_id (fk), name, company, email, phone, source, status, classification, profile_url, raw_data (jsonb), places_id (fk opcional para places existente), created_at",
+        "Tabela 'interactions' com: id, lead_id (fk), type, content, subject, message_id, opened_at, clicked_at, created_at",
+        "Tabela 'meetings' com: id, lead_id (fk), calendar_event_id, scheduled_at, meet_link, status, created_at",
+        "Tabela 'campaigns' com: id, entrepreneur_id (fk), name, queries_json (jsonb), status, leads_found, created_at",
+        "RLS habilitado em novas tabelas com policy para entrepreneur_id",
+        "Migration SQL criado em supabase/migrations/",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Manter tabela 'places' existente, apenas adicionar foreign key opcional em leads"
+    },
+    {
+      "id": "US-002",
+      "title": "Criar projeto Next.js na raiz",
+      "description": "As a developer, I need the Next.js project initialized so that I can build the frontend.",
+      "acceptanceCriteria": [
+        "package.json com Next.js 14, React 18, TypeScript",
+        "tsconfig.json configurado",
+        "tailwind.config.ts configurado",
+        "app/layout.tsx com providers básicos",
+        "app/page.tsx com redirect para /login",
+        ".env.example com NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Criar na raiz do projeto, manter GrowthwayHackathonDatabase como subpasta"
+    },
+    {
+      "id": "US-003",
+      "title": "Configurar Supabase client e tipos",
+      "description": "As a developer, I need Supabase client configured with TypeScript types.",
+      "acceptanceCriteria": [
+        "lib/supabase/client.ts com createBrowserClient",
+        "lib/supabase/server.ts com createServerClient para server components",
+        "lib/supabase/middleware.ts com createServerClient para middleware",
+        "types/database.ts com tipos gerados ou manuais para as tabelas",
+        "Usar @supabase/ssr package",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Instalar e configurar shadcn/ui",
+      "description": "As a developer, I need shadcn/ui components for consistent UI.",
+      "acceptanceCriteria": [
+        "components.json configurado",
+        "lib/utils.ts com cn() helper",
+        "Componentes instalados: Button, Input, Card, Table, Dialog, Select, Badge, ScrollArea, Avatar, DropdownMenu",
+        "globals.css com CSS variables do shadcn",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Middleware de autenticação",
+      "description": "As a developer, I need auth middleware to protect dashboard routes.",
+      "acceptanceCriteria": [
+        "middleware.ts na raiz do projeto",
+        "Rotas /dashboard/* requerem autenticação",
+        "Rotas /login e /signup são públicas",
+        "Redireciona para /login se não autenticado",
+        "Redireciona para /dashboard se já autenticado e acessar /login",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Página de cadastro",
+      "description": "As a small business owner, I want to create an account so that I can use the platform.",
+      "acceptanceCriteria": [
+        "Página app/(auth)/signup/page.tsx",
+        "Form com: email, senha (min 8 chars), nome da empresa",
+        "Validação client-side com mensagens de erro",
+        "Server action que chama Supabase signUp",
+        "Cria row em 'entrepreneurs' após signup bem-sucedido",
+        "Redireciona para /briefing após sucesso",
+        "Link para /login para quem já tem conta",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Página de login",
+      "description": "As a small business owner, I want to log in so that I can access my account.",
+      "acceptanceCriteria": [
+        "Página app/(auth)/login/page.tsx",
+        "Form com: email, senha",
+        "Server action que chama Supabase signInWithPassword",
+        "Mensagem de erro para credenciais inválidas",
+        "Redireciona para /dashboard após sucesso",
+        "Link para /signup para novos usuários",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Layout do dashboard com sidebar",
+      "description": "As a user, I need navigation to move between pages.",
+      "acceptanceCriteria": [
+        "Layout em app/(dashboard)/layout.tsx",
+        "Sidebar com links: Dashboard, Leads, Briefing, Configurações",
+        "Ícones para cada item (Lucide icons)",
+        "Header com nome da empresa do usuário",
+        "Botão de logout no header que chama signOut",
+        "Layout responsivo (sidebar colapsa em mobile)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Página de dashboard vazia",
+      "description": "As a user, I need a dashboard page as the main entry point.",
+      "acceptanceCriteria": [
+        "Página app/(dashboard)/dashboard/page.tsx",
+        "Título 'Dashboard'",
+        "Mensagem placeholder 'Métricas em breve'",
+        "Server component que busca dados do entrepreneur logado",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Métricas serão implementadas depois, foco é ter a navegação funcionando"
+    },
+    {
+      "id": "US-010",
+      "title": "Interface de chat para briefing",
+      "description": "As a small business owner, I want a chat interface to describe my business to the AI.",
+      "acceptanceCriteria": [
+        "Página app/(dashboard)/briefing/page.tsx",
+        "Container de chat com scroll",
+        "Mensagens do usuário à direita (bg azul)",
+        "Mensagens da IA à esquerda (bg cinza)",
+        "Input de texto fixo no bottom",
+        "Botão enviar (ou Enter)",
+        "Estado local para histórico de mensagens",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "UI apenas, integração com IA na próxima story"
+    },
+    {
+      "id": "US-011",
+      "title": "API endpoint para chat do briefing",
+      "description": "As a system, I need an API to process chat messages with Claude.",
+      "acceptanceCriteria": [
+        "Route handler app/api/briefing/chat/route.ts",
+        "Recebe POST com { messages: [{role, content}] }",
+        "Usa Claude API (Anthropic SDK) para gerar resposta",
+        "System prompt define perguntas: produto/serviço, ICP, região, ticket médio, dores",
+        "Retorna JSON { response: string, isComplete: boolean, briefingData?: object }",
+        "Valida autenticação via Supabase session",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Usar claude-3-haiku para custo baixo no chat"
+    },
+    {
+      "id": "US-012",
+      "title": "Conectar chat UI com API",
+      "description": "As a user, I want the chat to actually communicate with the AI.",
+      "acceptanceCriteria": [
+        "Chat envia mensagens para /api/briefing/chat",
+        "Mostra indicador de loading enquanto aguarda resposta",
+        "Exibe resposta da IA quando chega",
+        "Trata erros de rede com mensagem amigável",
+        "Persiste histórico no state entre mensagens",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Salvar briefing completo no banco",
+      "description": "As a system, I need to save briefing data when complete.",
+      "acceptanceCriteria": [
+        "Quando API detecta briefing completo, retorna isComplete: true",
+        "UI mostra botão 'Salvar e Continuar' quando completo",
+        "Route handler POST /api/briefing/save",
+        "Atualiza entrepreneur.briefing_json com dados estruturados",
+        "Cria Campaign com status='pending'",
+        "Redireciona para página de prospecção",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Página para iniciar prospecção",
+      "description": "As a user, I want to start prospecting after completing briefing.",
+      "acceptanceCriteria": [
+        "Página app/(dashboard)/prospecting/page.tsx",
+        "Mostra resumo do briefing salvo",
+        "Botão 'Importar Leads do Banco'",
+        "Dropdown para selecionar categoria (alimentacao, saude, etc.)",
+        "Click importa leads da tabela 'places' filtrados por categoria",
+        "Mostra contador de leads importados",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "MVP usa dados já existentes em 'places', não roda scraper em tempo real"
+    },
+    {
+      "id": "US-015",
+      "title": "Importar leads da tabela places",
+      "description": "As a system, I need to import existing places as leads for the entrepreneur.",
+      "acceptanceCriteria": [
+        "Route handler POST /api/leads/import",
+        "Recebe { category: string, limit: number }",
+        "Busca places da categoria especificada",
+        "Cria leads vinculados ao entrepreneur com places_id",
+        "Deduplicação por telefone (não importar duplicados)",
+        "Status inicial: 'new', classification: 'cold'",
+        "Atualiza Campaign.leads_found",
+        "Retorna quantidade importada",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Tabela de leads básica",
+      "description": "As a user, I want to see my leads in a table.",
+      "acceptanceCriteria": [
+        "Página app/(dashboard)/leads/page.tsx",
+        "Tabela com colunas: nome, empresa/categoria, telefone, status, classificação",
+        "Dados carregados via server component",
+        "Ordenação por created_at desc",
+        "Usar shadcn Table component",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Paginação na tabela de leads",
+      "description": "As a user, I want pagination to browse many leads.",
+      "acceptanceCriteria": [
+        "20 leads por página",
+        "Botões Anterior/Próximo",
+        "Indicador de página atual",
+        "Query param ?page=N na URL",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Filtros na tabela de leads",
+      "description": "As a user, I want to filter leads by status and classification.",
+      "acceptanceCriteria": [
+        "Select para status: all, new, contacted, responded, meeting, trash",
+        "Select para classificação: all, cold, engaged, trash",
+        "Filtros atualizam query params",
+        "Filtros persistem na URL",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Modal de detalhes do lead",
+      "description": "As a user, I want to see full lead details.",
+      "acceptanceCriteria": [
+        "Click na linha abre Dialog com detalhes",
+        "Mostra: nome, telefone, email, categoria, horário funcionamento",
+        "Mostra raw_data formatado se existir",
+        "Botão fechar",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Cards de métricas no dashboard",
+      "description": "As a user, I want to see key metrics.",
+      "acceptanceCriteria": [
+        "Card 'Total Leads' com count",
+        "Card 'Emails Enviados' com count de interactions type='email'",
+        "Card 'Taxa de Abertura' com % (opened_at não null / total emails)",
+        "Card 'Reuniões' com count de meetings",
+        "Dados carregados via server component",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Lista de atividade recente no dashboard",
+      "description": "As a user, I want to see recent activity.",
+      "acceptanceCriteria": [
+        "Seção 'Atividade Recente'",
+        "Lista últimas 10 interactions",
+        "Mostra: ícone por tipo, nome do lead, tempo relativo",
+        "Ordenado por created_at desc",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Configurar Resend para envio de email",
+      "description": "As a developer, I need Resend configured for sending emails.",
+      "acceptanceCriteria": [
+        "lib/resend.ts com cliente Resend configurado",
+        "Env var RESEND_API_KEY",
+        "Função sendEmail({ to, subject, html })",
+        "Função com retry em caso de falha (max 3)",
+        "Typecheck passes"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Gerar email personalizado com Claude",
+      "description": "As a system, I need to generate personalized cold emails.",
+      "acceptanceCriteria": [
+        "lib/email-generator.ts",
+        "Função generateEmail({ briefing, lead })",
+        "Usa Claude Sonnet para gerar subject e body",
+        "Prompt: tom profissional, direto, < 150 palavras, CTA claro",
+        "Retorna { subject: string, body: string }",
+        "Typecheck passes"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Botão para enviar email ao lead",
+      "description": "As a user, I want to send an email to a lead from their detail modal.",
+      "acceptanceCriteria": [
+        "Botão 'Enviar Email' no modal de detalhes do lead",
+        "Só aparece se lead tem email",
+        "Click chama API /api/leads/[id]/email",
+        "API gera email com Claude e envia via Resend",
+        "Cria Interaction com type='email'",
+        "Atualiza lead status para 'contacted'",
+        "Mostra toast de sucesso/erro",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "Muitos leads do Maps não tem email, pode mostrar aviso"
+    },
+    {
+      "id": "US-025",
+      "title": "Histórico de interações no modal do lead",
+      "description": "As a user, I want to see interaction history.",
+      "acceptanceCriteria": [
+        "Seção 'Histórico' no modal de detalhes",
+        "Lista interactions do lead ordenadas por data",
+        "Mostra: tipo, data, preview do conteúdo (50 chars)",
+        "Badge se email foi aberto (opened_at não null)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Webhook para tracking de email",
+      "description": "As a system, I need to track email opens and clicks.",
+      "acceptanceCriteria": [
+        "Route handler POST /api/webhooks/resend",
+        "Valida webhook signature",
+        "Evento 'email.opened' atualiza Interaction.opened_at",
+        "Evento 'email.clicked' atualiza Interaction.clicked_at",
+        "Lead cold -> engaged se abriu email",
+        "Retorna 200 OK",
+        "Typecheck passes"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Página de configurações com OAuth Google",
+      "description": "As a user, I want to connect my Google Calendar.",
+      "acceptanceCriteria": [
+        "Página app/(dashboard)/settings/page.tsx",
+        "Seção 'Integrações'",
+        "Botão 'Conectar Google Calendar'",
+        "Fluxo OAuth2 via /api/auth/google",
+        "Callback salva token em entrepreneur.calendar_token",
+        "Indicador visual de conectado/desconectado",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Buscar horários disponíveis no Calendar",
+      "description": "As a system, I need to find available time slots.",
+      "acceptanceCriteria": [
+        "lib/google-calendar.ts",
+        "Função getAvailableSlots(token, days=5)",
+        "Busca freebusy dos próximos 5 dias úteis",
+        "Horário comercial: 9h-18h",
+        "Retorna até 5 slots de 30 min",
+        "Typecheck passes"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Botão para propor reunião ao lead",
+      "description": "As a user, I want to send meeting time options to a lead.",
+      "acceptanceCriteria": [
+        "Botão 'Propor Reunião' no modal do lead",
+        "Só aparece se Calendar conectado e lead tem email",
+        "Click busca horários disponíveis",
+        "Gera email com Claude listando horários",
+        "Cada horário tem link único /schedule/confirm?token=xxx",
+        "Envia via Resend",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Página de confirmação de agendamento",
+      "description": "As a lead, I want to confirm a meeting time.",
+      "acceptanceCriteria": [
+        "Página pública app/schedule/confirm/page.tsx",
+        "Recebe token e slot via query params",
+        "Valida token e verifica se slot ainda disponível",
+        "Mostra detalhes: data, hora, duração",
+        "Botão 'Confirmar Reunião'",
+        "Cria evento no Google Calendar com Meet link",
+        "Cria Meeting no banco",
+        "Atualiza lead status='meeting'",
+        "Mostra página de sucesso com link do Meet",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "Lista de próximas reuniões no dashboard",
+      "description": "As a user, I want to see upcoming meetings.",
+      "acceptanceCriteria": [
+        "Seção 'Próximas Reuniões' no dashboard",
+        "Lista meetings com scheduled_at > now",
+        "Mostra: data/hora, nome do lead, link do Meet",
+        "Limite de 5",
+        "Mensagem se nenhuma reunião",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "Notificar empresário sobre reunião agendada",
+      "description": "As a user, I want to be notified when a meeting is scheduled.",
+      "acceptanceCriteria": [
+        "Após criar Meeting, envia email ao entrepreneur",
+        "Email contém: nome do lead, data/hora, link Meet",
+        "Usa Resend",
+        "Typecheck passes"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
