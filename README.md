@@ -1,4 +1,4 @@
-# growth_hackathon
+#growth_hackaton
 
 Para fazer o setup
 
