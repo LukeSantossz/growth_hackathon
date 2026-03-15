@@ -1,0 +1,208 @@
+# PRD: AI Sales Team — MVP
+
+## Problema
+
+Pequeno empresário precisa vender para crescer, mas não tem equipe nem dinheiro para contratar SDRs. Resultado: prospecção zero, crescimento travado.
+
+## Solução
+
+Plataforma web onde agentes de IA executam o ciclo completo de pré-vendas — do briefing até a reunião agendada no Google Calendar do empresário.
+
+---
+
+## Pipeline Resumido
+
+```
+Cadastro → Briefing (chat IA) → Prospecção (LinkedIn + Google Maps) → CRM → Outreach (email + DM) → Nurturing → Agendamento
+```
+
+---
+
+## MVP: 4 Fases, 8 Funcionalidades
+
+### Fase 1 — Onboarding + Briefing
+
+**F1. Cadastro simples**
+- Email + senha + nome da empresa
+- Workspace isolado (multi-tenant por row-level security)
+- Redirect para briefing após cadastro
+
+**F2. Briefing via chat com IA**
+- Chat conversacional: o agente pergunta sobre produto, ICP, região, ticket médio, dores do cliente
+- Guardrail: só avança quando informações mínimas forem coletadas
+- Output salvo como JSON estruturado no banco
+- Agente LLM converte briefing em queries de busca (cargos LinkedIn + categorias Google Maps)
+
+### Fase 2 — Prospecção
+
+**F3. Prospecção automatizada**
+- **LinkedIn:** via RapidAPI (LinkedIn Profile Search) — busca por cargo, setor, localização → extrai nome, cargo, empresa, URL, email
+- **Google Maps:** via Google Places API — busca por tipo de negócio + localização → extrai nome, endereço, telefone, website, rating
+- Leads salvos no CRM interno com deduplicação por email/telefone/URL
+- Jobs em background (fila assíncrona), não bloqueia UI
+
+### Fase 3 — CRM + Classificação
+
+**F4. CRM interno**
+- Tabela de leads: nome, empresa, origem, status, classificação, última interação
+- Filtro por status/origem/classificação + busca + paginação
+- Click abre perfil completo do lead com histórico
+
+**F5. Classificação automática**
+- 3 níveis: `Trash` | `Cold` | `Engaged`
+- Classificação inicial por dados do perfil (cargo, tamanho empresa)
+- Reclassificação dinâmica por interações (abriu email, respondeu)
+
+### Fase 4 — Outreach + Agendamento
+
+**F6. Email personalizado**
+- Integração com Resend (simples, bom free tier)
+- Agente LLM gera email usando briefing + dados do lead
+- Tracking de abertura/clique
+- Histórico de envios no perfil do lead
+
+**F7. Nurturing automatizado**
+- Sequência de follow-ups: 3 → 7 → 14 dias
+- Agente varia conteúdo a cada tentativa
+- Para se lead responde ou agenda
+- Marca como `Trash` após 3 tentativas sem resposta
+
+**F8. Detecção de interesse + Agendamento**
+- Agente LLM analisa resposta do lead → detecta intenção positiva
+- Consulta Google Calendar do empresário via OAuth2
+- Propõe horários disponíveis ao lead
+- Cria evento automático com dados do lead + link Google Meet
+- Notifica empresário por email
+
+---
+
+## Dashboard (tela única)
+
+| Componente | Dados |
+|---|---|
+| Cards top | Total leads · Emails enviados · Taxa abertura · Reuniões agendadas |
+| Funil | Leads → Contatados → Responderam → Reunião |
+| Próximas reuniões | Lista com data, lead, empresa |
+| Atividade recente | Últimas 10 interações |
+
+---
+
+## Stack Técnica
+
+| Camada | Tecnologia |
+|---|---|
+| Frontend | Next.js 14 + Tailwind CSS + shadcn/ui |
+| Backend API | Next.js API Routes (monorepo) |
+| Agentes IA | Python FastAPI (microserviço separado) |
+| LLM | Claude API (sonnet para agentes, haiku para classificação) |
+| Database | PostgreSQL (Supabase) com RLS multi-tenant |
+| Auth | Supabase Auth (ou Clerk) |
+| Fila | Inngest ou BullMQ (jobs de prospecção/email) |
+| Email | Resend |
+| Calendar | Google Calendar API (OAuth2) |
+| Prospecção | RapidAPI LinkedIn + Google Places API |
+| Deploy | Vercel (frontend) + Railway (Python workers) |
+
+---
+
+## Modelo de Dados (simplificado)
+
+```
+Entrepreneur (id, email, name, company, briefing_json, calendar_token, created_at)
+     │
+     ├── Lead (id, entrepreneur_id, name, company, email, phone, source, status, classification, profile_url, raw_data, created_at)
+     │      │
+     │      ├── Interaction (id, lead_id, type[email|dm|response], content, opened_at, clicked_at, created_at)
+     │      │
+     │      └── Meeting (id, lead_id, calendar_event_id, scheduled_at, status, created_at)
+     │
+     └── Campaign (id, entrepreneur_id, queries_json, status, leads_found, created_at)
+```
+
+---
+
+## O que NÃO entra no MVP
+
+- ❌ Painel admin multi-tenant (dono da plataforma gerencia direto no banco)
+- ❌ WhatsApp / LinkedIn DMs (complexidade alta, compliance incerto)
+- ❌ Templates editáveis de email (agente gera tudo, empresário não edita)
+- ❌ Configuração de horários (usa disponibilidade real do Google Calendar)
+- ❌ App mobile
+- ❌ Billing/pagamentos
+- ❌ Integração CRM externo
+
+---
+
+## Fluxo Técnico Detalhado
+
+```
+1. Empresário se cadastra
+   → Supabase Auth cria user + row em Entrepreneur
+
+2. Briefing (chat)
+   → Frontend envia mensagens para /api/briefing
+   → Claude processa, faz perguntas, valida completude
+   → Salva briefing_json no Entrepreneur
+   → Claude gera queries de busca → salva em Campaign
+
+3. Prospecção (background job)
+   → Worker Python consome job da fila
+   → Executa queries em RapidAPI LinkedIn + Google Places
+   → Normaliza dados → salva Leads com deduplicação
+   → Classificação inicial (Claude Haiku)
+
+4. Outreach (background job)
+   → Worker seleciona leads Cold/Engaged sem contato
+   → Claude Sonnet gera email personalizado
+   → Resend envia → registra Interaction
+   → Webhook Resend atualiza opened_at/clicked_at
+
+5. Nurturing (cron job diário)
+   → Busca leads contatados sem resposta
+   → Verifica timing (3/7/14 dias)
+   → Gera follow-up variado → envia
+   → Após 3 tentativas sem resposta → Trash
+
+6. Detecção + Agendamento
+   → Lead responde email (webhook Resend inbound)
+   → Claude analisa sentimento/intenção
+   → Se positivo: busca slots no Google Calendar
+   → Envia email com proposta de horários
+   → Lead confirma → cria evento + Meeting
+   → Notifica empresário
+```
+
+---
+
+## Critérios de Sucesso (MVP)
+
+| Métrica | Meta |
+|---|---|
+| Tempo de briefing | < 5 min |
+| Leads prospectados/dia | ≥ 30 |
+| Taxa de resposta | > 3% |
+| Taxa de agendamento | > 0.5% dos leads |
+| Primeira reunião | ≤ 10 dias após briefing |
+
+---
+
+## Riscos e Mitigações
+
+| Risco | Mitigação |
+|---|---|
+| LinkedIn bloqueia scraping | Usar RapidAPI (intermediário legal), respeitar rate limits |
+| Emails caem em spam | SPF/DKIM/DMARC configurados, warm-up de domínio, volume baixo inicial |
+| LGPD | Dados públicos apenas, opt-out em todo email, delete on request |
+| Custo LLM alto | Haiku para tarefas simples (classificação), Sonnet só para geração de texto |
+| Lead responde com raiva | Agente detecta sentimento negativo → marca Trash, não insiste |
+
+---
+
+## Próximos Passos (pós-MVP)
+
+1. Painel admin com métricas agregadas
+2. WhatsApp Business API integration
+3. Templates editáveis pelo empresário
+4. A/B testing de mensagens
+5. Billing com Stripe (por reunião agendada ou assinatura)
+6. LinkedIn DMs via API oficial
