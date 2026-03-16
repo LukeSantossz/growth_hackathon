@@ -4,18 +4,34 @@ Sistema de automacao de vendas com IA para pequenas empresas.
 
 ## Requisitos
 
+### Frontend (Next.js)
 - Node.js 18+
+
+### Backend (Python)
+- Python 3.13+
+- [uv](https://docs.astral.sh/uv/) (gerenciador de pacotes Python)
+
+### Servicos
 - Conta no [Supabase](https://supabase.com)
-- Conta na [Anthropic](https://console.anthropic.com) (para Claude API)
-- Conta no [Resend](https://resend.com) (para envio de emails)
-- Conta no [Google Cloud](https://console.cloud.google.com) (para integracao com Calendar)
+- Conta na [OpenAI](https://platform.openai.com) (para chat do briefing)
+- Conta no [Groq](https://console.groq.com) (para SDR Agent)
+- Conta no [LangSmith](https://smith.langchain.com) (para monitoramento do agent - opcional)
+- Conta no [Resend](https://resend.com) (para envio de emails - opcional)
+- Conta no [Google Cloud](https://console.cloud.google.com) (para integracao com Calendar - opcional)
 
 ## Configuracao
 
 ### 1. Instalar dependencias
 
+**Frontend (Next.js):**
 ```bash
 npm install
+```
+
+**Backend (Python):**
+```bash
+cd backend
+uv sync
 ```
 
 ### 2. Configurar variaveis de ambiente
@@ -55,13 +71,13 @@ Execute as migrations no Supabase:
 1. Va em **SQL Editor** no Supabase Dashboard
 2. Cole e execute o conteudo do arquivo `supabase/migrations/001_initial_schema.sql`
 
-#### Anthropic (Claude)
+#### OpenAI
 
-1. Acesse [Anthropic Console](https://console.anthropic.com)
+1. Acesse [OpenAI Platform](https://platform.openai.com)
 2. Crie uma API Key em **API Keys**
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
 ```
 
 #### Resend (Email)
@@ -87,13 +103,46 @@ GOOGLE_CLIENT_SECRET=seu_client_secret
 GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
 ```
 
+#### Groq (SDR Agent)
+
+1. Acesse [Groq Console](https://console.groq.com)
+2. Crie uma API Key
+
+```env
+GROQ_API_KEY=gsk_...
+```
+
+#### LangSmith (Monitoramento - opcional)
+
+1. Acesse [LangSmith](https://smith.langchain.com)
+2. Crie uma API Key
+
+```env
+LANGSMITH_API_KEY=lsv2_pt_...
+LANGSMITH_TRACING=true
+```
+
 ### 3. Executar o projeto
 
+**Frontend (Next.js):**
 ```bash
 npm run dev
 ```
-
 Acesse [http://localhost:3000](http://localhost:3000)
+
+**Backend CRM (Python):**
+```bash
+cd backend/crm_system
+uv run python app.py
+```
+API disponivel em [http://localhost:8000](http://localhost:8000)
+
+**SDR Agent (LangGraph):**
+```bash
+cd backend/sdr_agent
+uv sync
+uv run python agent.py
+```
 
 ## Scripts Disponiveis
 
@@ -112,6 +161,15 @@ app/                  # Rotas e paginas (Next.js App Router)
   (auth)/             # Paginas de autenticacao (login, signup)
   (dashboard)/        # Paginas do dashboard
   api/                # API Routes
+backend/              # Backend Python
+  crm_system/         # Sistema CRM (FastAPI)
+    api/              # Endpoints da API
+    core/             # Configuracoes e database
+    models/           # Modelos SQLAlchemy
+    schemas/          # Schemas Pydantic
+  sdr_agent/          # Agente SDR (LangGraph)
+    agent/            # Nodes e estados do grafo
+    evaluation/       # Scripts de avaliacao
 components/           # Componentes React reutilizaveis
   ui/                 # Componentes de UI (shadcn/ui)
 lib/                  # Utilitarios e configuracoes
@@ -137,9 +195,20 @@ Credenciais padrao:
 
 ## Tecnologias
 
+### Frontend
 - [Next.js 14](https://nextjs.org) - Framework React
-- [Supabase](https://supabase.com) - Backend as a Service (Auth + Database)
 - [Tailwind CSS](https://tailwindcss.com) - Estilizacao
 - [shadcn/ui](https://ui.shadcn.com) - Componentes de UI
-- [Claude API](https://anthropic.com) - IA para automacao de vendas
+
+### Backend
+- [FastAPI](https://fastapi.tiangolo.com) - Framework Python para APIs
+- [LangGraph](https://langchain-ai.github.io/langgraph/) - Framework para agentes com estado
+- [LangChain](https://langchain.com) - Framework para aplicacoes com LLMs
+- [SQLAlchemy](https://sqlalchemy.org) - ORM Python
+
+### Servicos
+- [Supabase](https://supabase.com) - Backend as a Service (Auth + Database)
+- [OpenAI API](https://openai.com) - IA para chat do briefing
+- [Groq](https://groq.com) - LLMs de alta velocidade para SDR Agent
+- [LangSmith](https://smith.langchain.com) - Monitoramento de agentes
 - [Resend](https://resend.com) - Envio de emails
