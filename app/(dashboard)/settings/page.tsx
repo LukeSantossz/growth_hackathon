@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,21 +9,29 @@ import { Calendar, CheckCircle, ExternalLink } from "lucide-react";
 export default function SettingsPage() {
   const [entrepreneur, setEntrepreneur] = useState<{ company: string; email: string; calendar_token: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [error, setError] = useState<string | null>(null);
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const { data } = await supabase
-        .from("entrepreneurs")
-        .select("company, email, calendar_token")
-        .eq("auth_user_id", user.id)
-        .single();
+        const { data, error: queryError } = await supabase
+          .from("entrepreneurs")
+          .select("company, email, calendar_token")
+          .eq("auth_user_id", user.id)
+          .single();
 
-      setEntrepreneur(data);
-      setLoading(false);
+        if (queryError) throw queryError;
+        setEntrepreneur(data);
+      } catch (err) {
+        setError("Erro ao carregar dados");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
   }, [supabase]);
@@ -35,6 +43,10 @@ export default function SettingsPage() {
 
   if (loading) {
     return <div className="animate-pulse">Carregando...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>;
   }
 
   return (

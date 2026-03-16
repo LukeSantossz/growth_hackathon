@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import type { BriefingData } from "@/types/database";
 
 const CATEGORIES = [
   { value: "alimentacao", label: "Alimentação (restaurantes, bares, etc.)" },
@@ -27,9 +28,9 @@ export default function ProspectingPage() {
   const [limit, setLimit] = useState(50);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; count?: number; error?: string } | null>(null);
-  const [briefing, setBriefing] = useState<Record<string, unknown> | null>(null);
+  const [briefing, setBriefing] = useState<BriefingData | null>(null);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function loadBriefing() {
@@ -42,8 +43,8 @@ export default function ProspectingPage() {
         .eq("auth_user_id", user.id)
         .single();
 
-      if (entrepreneur?.briefing_json) {
-        setBriefing(entrepreneur.briefing_json as Record<string, unknown>);
+      if (entrepreneur?.briefing_json && typeof entrepreneur.briefing_json === "object") {
+        setBriefing(entrepreneur.briefing_json as BriefingData);
       }
     }
     loadBriefing();
